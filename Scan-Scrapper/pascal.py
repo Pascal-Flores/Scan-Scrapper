@@ -51,7 +51,6 @@ if __name__ == '__main__':
             nextTome = jsonFromReaderScript["nextUrl"]
             return (links, nextTome)
 
-
     def scrapLink(url, tomeIndex, pageIndex):
         response = requests.get(url)
         if response.status_code >= 300:
@@ -59,7 +58,6 @@ if __name__ == '__main__':
         else:
             img_data = requests.get(url).content
         return img_data
-
 
     def saveImage(imageData, path, tomeIndex, pageIndex):
         if path[len(path)-1] != '/':
@@ -69,6 +67,13 @@ if __name__ == '__main__':
             os.mkdir(destination)
         with open(destination+'/'+str(pageIndex)+'.jpg', 'wb') as handler:
             handler.write(imageData)
+        return
+
+    def getVolume(imagesLinks, path, tomeIndex):
+        pageIndex = 1
+        for link in imagesLinks:
+            saveImage(scrapLink(link, tomeIndex, pageIndex), path, tomeIndex, pageIndex)
+            pageIndex += 1
         return
 
     def Main():
@@ -85,6 +90,5 @@ if __name__ == '__main__':
             if event == 'scrap':
                 url = values['-LIEN-']
                 tomeLinks = getLinks(url)
-                #saveImage(scrapLink(tomeLinks[0][0], 1, 1),values['-DESTINATION-'], 1, 1)
-
+                getVolume(tomeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')])
     Main()
