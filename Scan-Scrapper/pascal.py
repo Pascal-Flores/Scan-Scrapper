@@ -3,6 +3,64 @@ import os
 import requests
 import json
 from lxml import html, etree
+import multiprocessing
+import time
+
+def getLinks(url):
+    page = requests.get(url)
+    if page.status_code == 403:
+        print("Error 403 : your request was refused by the server (ง •̀_•́)ง")
+        return
+    if page.status_code == 404:
+        print("Error 404 : your URL was not found |-_-|")
+        return
+    elif page.status_code == 408:
+        print("Error 408 : your request timed out ( -_-)zZ")
+        return
+    elif page.status_code >= 500:
+        print("Error 500+ : the server shat himself (╯°□°)╯︵ ┻━┻")
+        return
+    elif page.status_code >= 300:
+        print("Unknown error : something bad happened ¯\_(ツ)_/¯")
+        return
+    else:
+        pageContent = html.fromstring(page.content)
+        readerScript = pageContent.xpath("//script[contains(text(), 'ts_reader.run')]/text()")
+        jsonFromReaderScript = json.loads(readerScript[0][readerScript[0].find("{"):readerScript[0].rfind("}")+1])
+        links = 0
+        for sources in range(len(jsonFromReaderScript["sources"])):
+            if links == 0:
+                links = jsonFromReaderScript["sources"][sources]["images"]
+            else:
+                links.append(jsonFromReaderScript["sources"][sources]["images"])
+        nextTome = jsonFromReaderScript["nextUrl"]
+        return (links, nextTome)
+
+def scrapLink(url, tomeIndex, pageIndex):
+    response = requests.get(url)
+    if response.status_code >= 300:
+        print("Error : image "+str(pageIndex)+" of volume "+str(tomeIndex)+" could not be retrieved...")
+    else:
+        img_data = requests.get(url).content
+    return img_data
+
+def saveImage(imageData, path, tomeIndex, pageIndex):
+    if path[len(path)-1] != '/':
+        path += '/'
+    destination = str(path)+"tome"+str(tomeIndex)
+    if(os.path.isdir(destination) == False):
+        os.mkdir(destination)
+    with open(destination+'/'+str(pageIndex)+'.jpg', 'wb') as handler:
+        handler.write(imageData)
+    return
+
+def getVolume(imagesLinks, path, tomeIndex):
+    pageIndex = 1
+    for link in imagesLinks:
+        saveImage(scrapLink(link, tomeIndex, pageIndex), path, tomeIndex, pageIndex)
+        pageIndex += 1
+    return
+
 
 if __name__ == '__main__':
 
@@ -15,64 +73,9 @@ if __name__ == '__main__':
             [sg.B('scrap')],
             [sg.T('destination (absolu)'),sg.Input(key='-DESTINATION-')]
         ]]
-        window = sg.Window('scrap manga', layout, size = (400,400))
+        window = sg.Window('Scan Scrapper', layout, size = (400,400))
 
         return window
-
-    def getLinks(url):
-        page = requests.get(url)
-        if page.status_code == 403:
-            print("Error 403 : your request was refused by the server (ง •̀_•́)ง")
-            return
-        if page.status_code == 404:
-            print("Error 404 : your URL was not found |-_-|")
-            return
-        elif page.status_code == 408:
-            print("Error 408 : your request timed out ( -_-)zZ")
-            return
-        elif page.status_code >= 500:
-            print("Error 500+ : the server shat himself (╯°□°)╯︵ ┻━┻")
-            return
-        elif page.status_code >= 300:
-            print("Unknown error : something bad happened ¯\_(ツ)_/¯")
-            return
-        else:
-            pageContent = html.fromstring(page.content)
-            readerScript = pageContent.xpath("//script[contains(text(), 'ts_reader.run')]/text()")
-            jsonFromReaderScript = json.loads(readerScript[0][readerScript[0].find("{"):readerScript[0].rfind("}")+1])
-            links = 0
-            for sources in range(len(jsonFromReaderScript["sources"])):
-                if links == 0:
-                    links = jsonFromReaderScript["sources"][sources]["images"]
-                else:
-                    links.append(jsonFromReaderScript["sources"][sources]["images"])
-            nextTome = jsonFromReaderScript["nextUrl"]
-            return (links, nextTome)
-
-    def scrapLink(url, tomeIndex, pageIndex):
-        response = requests.get(url)
-        if response.status_code >= 300:
-            print("Error : image "+str(pageIndex)+" of volume "+str(tomeIndex)+" could not be retrieved...")
-        else:
-            img_data = requests.get(url).content
-        return img_data
-
-    def saveImage(imageData, path, tomeIndex, pageIndex):
-        if path[len(path)-1] != '/':
-            path += '/'
-        destination = str(path)+"tome"+str(tomeIndex)
-        if(os.path.isdir(destination) == False):
-            os.mkdir(destination)
-        with open(destination+'/'+str(pageIndex)+'.jpg', 'wb') as handler:
-            handler.write(imageData)
-        return
-
-    def getVolume(imagesLinks, path, tomeIndex):
-        pageIndex = 1
-        for link in imagesLinks:
-            saveImage(scrapLink(link, tomeIndex, pageIndex), path, tomeIndex, pageIndex)
-            pageIndex += 1
-        return
 
     def Main():
 
@@ -88,11 +91,26 @@ if __name__ == '__main__':
             if event == 'scrap':
                 url = values['-LIEN-']
                 volumeLinks = getLinks(url)
+                processes = []
+
+                # while True:
+                #     processes.append(multiprocessing.Process(target=getVolume, args=[volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')]]).start())
+                #     url = volumeLinks[1]
+                #     volumeLinks = getLinks(url)
+                #     if "volume" in volumeLinks[1] == False:
+                #         break
+                # elapsed = time.time()
+                # for process in processes:
+                #     process.join()
+                # elaped = time.time() - elapsed
+                elapsed = time.time()
                 while True:
                     getVolume(volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')])
                     url = volumeLinks[1]
                     volumeLinks = getLinks(url)
                     if "volume" in volumeLinks[1] == False:
                         break
+                elapsed = time.time() - elapsed
+                print("Scraping done in "+str(elapsed)+"s. Enjoy ◔‿◔")
 
     Main()
