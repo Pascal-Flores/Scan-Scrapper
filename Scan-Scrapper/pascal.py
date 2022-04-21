@@ -14,7 +14,8 @@ if __name__ == '__main__':
 
         layout = [[
             [sg.T('Lien du manga'), sg.Input(key='-LIEN-')],
-            [sg.B('scrap')]
+            [sg.B('scrap')],
+            [sg.T('destination (absolu)'),sg.INPUT(key='-DESTINATION-')]
         ]]
         window = sg.Window('scrap manga', layout, size = (400,400))
 
@@ -50,7 +51,13 @@ if __name__ == '__main__':
             nextTome = jsonFromReaderScript["nextUrl"]
             return (links, nextTome)
 
-    #print(getLinks("https://sushi-scan.su/berserk-volume-1/"))
+    def scrapLink(url, tomeIndex, pageIndex):
+        response = requests.get(url)
+        if response.status_code >= 300:
+            print("Error : image "+str(pageIndex)+" of volume "+str(tomeIndex)+" could not be retrieved...")
+        else:
+            img_data = requests.get(url).content
+        return img_data
 
     def Main():
 
