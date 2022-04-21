@@ -1,9 +1,7 @@
 import PySimpleGUI as sg
 import os
-import sys
 import requests
 import json
-import re
 from lxml import html, etree
 
 if __name__ == '__main__':
@@ -90,9 +88,11 @@ if __name__ == '__main__':
             if event == 'scrap':
                 url = values['-LIEN-']
                 volumeLinks = getLinks(url)
-                while "volume" in volumeLinks[1]:
+                while True:
                     getVolume(volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')])
                     url = volumeLinks[1]
                     volumeLinks = getLinks(url)
+                    if "volume" in volumeLinks[1] == False:
+                        break
 
     Main()
