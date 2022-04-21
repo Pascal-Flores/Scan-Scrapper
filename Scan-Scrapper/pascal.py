@@ -89,6 +89,10 @@ if __name__ == '__main__':
 
             if event == 'scrap':
                 url = values['-LIEN-']
-                tomeLinks = getLinks(url)
-                getVolume(tomeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')])
+                volumeLinks = getLinks(url)
+                while "volume" in volumeLinks[1]:
+                    getVolume(volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')])
+                    url = volumeLinks[1]
+                    volumeLinks = getLinks(url)
+
     Main()
