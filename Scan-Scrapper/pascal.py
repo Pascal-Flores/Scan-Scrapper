@@ -23,15 +23,20 @@ if __name__ == '__main__':
     def getLinks(url):
         page = requests.get(url)
         if page.status_code == 403:
-            print("your request was refused by the server :'('")
+            print("Error 403 : your request was refused by the server (ง •̀_•́)ง")
+            return
         if page.status_code == 404:
-            print("your URL was not found :(")
+            print("Error 404 : your URL was not found |-_-|")
+            return
         elif page.status_code == 408:
-            print("your request timed out :/")
+            print("Error 408 : your request timed out ( -_-)zZ")
+            return
         elif page.status_code >= 500:
-            print("the server shat himself (╯°□°)╯︵ ┻━┻")
+            print("Error 500+ : the server shat himself (╯°□°)╯︵ ┻━┻")
+            return
         elif page.status_code >= 300:
-            print("something bad happened ¯\_(ツ)_/¯")
+            print("Unknown error : something bad happened ¯\_(ツ)_/¯")
+            return
         else:
             pageContent = html.fromstring(page.content)
             readerScript = pageContent.xpath("//script[contains(text(), 'ts_reader.run')]/text()")
@@ -42,7 +47,8 @@ if __name__ == '__main__':
                     links = jsonFromReaderScript["sources"][sources]["images"]
                 else:
                     links.append(jsonFromReaderScript["sources"][sources]["images"])
-            return links
+            nextTome = jsonFromReaderScript["nextUrl"]
+            return (links, nextTome)
 
     #print(getLinks("https://sushi-scan.su/berserk-volume-1/"))
 
@@ -58,16 +64,8 @@ if __name__ == '__main__':
                 break
 
             if event == 'scrap':
-
                 url = values['-LIEN-']
-
-                if "http://" not in url:
-
-                    print("l'url ne contient pas de lien")
-
-                else:
- 
-                    print(getLinks(values['-LIEN-']))
+                print(getLinks(values['-LIEN-']))
 
 
     Main()
