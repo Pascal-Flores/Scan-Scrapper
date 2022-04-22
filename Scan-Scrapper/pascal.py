@@ -44,10 +44,13 @@ def scrapLink(url, tomeIndex, pageIndex):
         img_data = requests.get(url).content
     return img_data
 
-def saveImage(imageData, path, tomeIndex, pageIndex):
+def saveImage(imageData, path, tomeIndex, pageIndex, type):
     if path[len(path)-1] != '/':
         path += '/'
-    destination = str(path)+"tome"+str(tomeIndex)
+    if type == "vol":
+        destination = str(path)+"tome"+str(tomeIndex)
+    elif type == "chap":
+        destination = str(path)+"chapitre"+str(tomeIndex)
     if(os.path.isdir(destination) == False):
         os.mkdir(destination)
     with open(destination+'/'+str(pageIndex)+'.jpg', 'wb') as handler:
@@ -56,8 +59,13 @@ def saveImage(imageData, path, tomeIndex, pageIndex):
 
 def getVolume(imagesLinks, path, tomeIndex):
     pageIndex = 1
+    type = ""
     for link in imagesLinks:
-        saveImage(scrapLink(link, tomeIndex, pageIndex), path, tomeIndex, pageIndex)
+        if "Tome" in link:
+            type = "vol"
+        if "Chap" in link:
+            type = "chap"
+        saveImage(scrapLink(link, tomeIndex, pageIndex), path, tomeIndex, pageIndex, type)
         pageIndex += 1
     return
 
@@ -71,8 +79,8 @@ if __name__ == '__main__':
         layout = [[
             [sg.T('Lien du manga'), sg.Input(key='-LIEN-')],
             [sg.T('destination (absolu)'),sg.Input(key='-DESTINATION-')],
-            [sg.Checkbox('parallélisation', default=False, key="-PARALLELISM-")],
-            [sg.T('nombre de coeurs'), sg.Input(key="-CPU-")],
+            [sg.Checkbox('lancer en séquentiel (plus sûr, beaucoup plus long)', default=False, key="-PARALLELISM-")],
+            [sg.Checkbox('ne pas récupérer les chapitres', default=False, key="-CHAPTERS-")],
             [sg.B('scrap')]
         ]]
         window = sg.Window('Scan Scrapper', layout, size = (400,400))
@@ -81,7 +89,7 @@ if __name__ == '__main__':
 
     def Main():
 
-        window = MakeWindow(sg.theme('Dark Amber'))
+        window = MakeWindow(sg.theme('Dark Black'))
 
         while True:
             event, values = window.read()
@@ -95,31 +103,43 @@ if __name__ == '__main__':
                 volumeLinks = getLinks(url)
 
                 elapsed = time.time()
-                if (values["-PARALLELISM-"] == False):
+                if (values["-PARALLELISM-"] == True):
                     while True:
                         getVolume(volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')])
-                        if "volume" in volumeLinks[1] == False or volumeLinks[1] == "":
-                            break
+                        if values["-CHAPTERS-"] == True:
+                            if "volume" in volumeLinks[1] == False or volumeLinks[1] == "":
+                                break
+                            else:
+                                url = volumeLinks[1]
+                                volumeLinks = getLinks(url)
                         else:
-                            url = volumeLinks[1]
-                            volumeLinks = getLinks(url)
-
+                            if "volume" in volumeLinks[1] == False or "chapitre" in volumeLinks[1] == False or volumeLinks[1] == "":
+                                break
+                            else:
+                                url = volumeLinks[1]
+                                volumeLinks = getLinks(url)
                 else:
                     volumesArguments = []
                     while True:
-                        print(volumeLinks[0])
                         volumesArguments.append((volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')]))
-                        if "volume" in volumeLinks[1] == False or volumeLinks[1] == "":
-                            break
+                        if values["-CHAPTERS-"] == True:
+                            if "volume" in volumeLinks[1] == False or volumeLinks[1] == "":
+                                break
+                            else:
+                                url = volumeLinks[1]
+                                volumeLinks = getLinks(url)
                         else:
-                            url = volumeLinks[1]
-                            volumeLinks = getLinks(url)
-                    cpus = 0
-                    if int(values["-CPU-"]) > multiprocessing.cpu_count():
-                        cpus = multiprocessing.cpu_count()
-                    else:
-                        cpus = int(values["-CPU-"])
-                    with multiprocessing.Pool(cpus) as pool:
+                            if "volume" in volumeLinks[1] == False or "chapitre" in volumeLinks[1] == False or volumeLinks[1] == "":
+                                break
+                            else:
+                                url = volumeLinks[1]
+                                volumeLinks = getLinks(url)
+                    # cpus = 0
+                    # if int(values["-CPU-"]) > multiprocessing.cpu_count():
+                    #     cpus = multiprocessing.cpu_count()
+                    # else:
+                    #     cpus = int(values["-CPU-"])
+                    with multiprocessing.Pool() as pool:
                         pool.starmap(getVolume, volumesArguments)
 
                 elapsed = time.time() - elapsed
