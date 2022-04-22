@@ -70,8 +70,10 @@ if __name__ == '__main__':
 
         layout = [[
             [sg.T('Lien du manga'), sg.Input(key='-LIEN-')],
-            [sg.B('scrap')],
-            [sg.T('destination (absolu)'),sg.Input(key='-DESTINATION-')]
+            [sg.T('destination (absolu)'),sg.Input(key='-DESTINATION-')],
+            [sg.Checkbox('parallélisation', default=False, key="-PARALLELISM-")],
+            [sg.T('nombre de coeurs'), sg.Input(key="-CPU-")],
+            [sg.B('scrap')]
         ]]
         window = sg.Window('Scan Scrapper', layout, size = (400,400))
 
@@ -91,25 +93,35 @@ if __name__ == '__main__':
             if event == 'scrap':
                 url = values['-LIEN-']
                 volumeLinks = getLinks(url)
-                processes = []
 
-                # while True:
-                #     processes.append(multiprocessing.Process(target=getVolume, args=[volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')]]).start())
-                #     url = volumeLinks[1]
-                #     volumeLinks = getLinks(url)
-                #     if "volume" in volumeLinks[1] == False:
-                #         break
-                # elapsed = time.time()
-                # for process in processes:
-                #     process.join()
-                # elaped = time.time() - elapsed
                 elapsed = time.time()
-                while True:
-                    getVolume(volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')])
-                    url = volumeLinks[1]
-                    volumeLinks = getLinks(url)
-                    if "volume" in volumeLinks[1] == False:
-                        break
+                if (values["-PARALLELISM-"] == False):
+                    while True:
+                        getVolume(volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')])
+                        if "volume" in volumeLinks[1] == False or volumeLinks[1] == "":
+                            break
+                        else:
+                            url = volumeLinks[1]
+                            volumeLinks = getLinks(url)
+
+                else:
+                    volumesArguments = []
+                    while True:
+                        print(volumeLinks[0])
+                        volumesArguments.append((volumeLinks[0], values['-DESTINATION-'], url[url.rfind('-')+1:url.rfind('/')]))
+                        if "volume" in volumeLinks[1] == False or volumeLinks[1] == "":
+                            break
+                        else:
+                            url = volumeLinks[1]
+                            volumeLinks = getLinks(url)
+                    cpus = 0
+                    if int(values["-CPU-"]) > multiprocessing.cpu_count():
+                        cpus = multiprocessing.cpu_count()
+                    else:
+                        cpus = int(values["-CPU-"])
+                    with multiprocessing.Pool(cpus) as pool:
+                        pool.starmap(getVolume, volumesArguments)
+
                 elapsed = time.time() - elapsed
                 print("Scraping done in "+str(elapsed)+"s. Enjoy ◔‿◔")
 
